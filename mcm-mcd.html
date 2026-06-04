@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MatePlay — MCM vs MCD</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f0; min-height: 100vh; display: flex; justify-content: center; padding: 16px; }
+    #root { width: 100%; max-width: 420px; }
+    .screen { display: none; flex-direction: column; gap: 16px; padding: 16px 0; }
+    .screen.active { display: flex; }
+    .header { display: flex; justify-content: space-between; align-items: center; }
+    .logo { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+    .logo span { color: #1D9E75; }
+    .lives { font-size: 20px; }
+    .progress-bar-wrap { background: #e0e0d8; border-radius: 99px; height: 8px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #1D9E75; border-radius: 99px; transition: width 0.4s ease; }
+    .score-badge { font-size: 13px; color: #666; }
+    .problem-card { background: #fff; border: 1px solid #e8e8e0; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .problem-emoji { font-size: 48px; text-align: center; }
+    .problem-text { font-size: 15px; color: #1a1a1a; line-height: 1.6; text-align: center; }
+    .section-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+    .choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .choice-btn { background: #fff; border: 1px solid #e0e0d8; border-radius: 14px; padding: 14px 10px; cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s; }
+    .choice-btn:hover { border-color: #1D9E75; background: #E1F5EE; }
+    .choice-btn.selected { border: 2px solid #1D9E75; background: #E1F5EE; }
+    .choice-btn.wrong { border: 2px solid #E24B4A; background: #FCEBEB; }
+    .choice-btn .cb-icon { font-size: 28px; margin-bottom: 6px; }
+    .choice-btn .cb-title { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+    .choice-btn .cb-desc { font-size: 11px; color: #888; margin-top: 2px; line-height: 1.4; }
+    .calc-section { display: flex; flex-direction: column; gap: 10px; }
+    .answer-row { display: flex; gap: 8px; align-items: center; }
+    .answer-input { flex: 1; font-size: 20px; font-weight: 600; text-align: center; border-radius: 10px; border: 1px solid #e0e0d8; padding: 10px; background: #fff; color: #1a1a1a; }
+    .answer-input:focus { outline: none; border-color: #1D9E75; box-shadow: 0 0 0 3px #9FE1CB55; }
+    .submit-btn { background: #1D9E75; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+    .submit-btn:hover { opacity: 0.85; }
+    .submit-btn:disabled { opacity: 0.4; cursor: default; }
+    .feedback { border-radius: 14px; padding: 14px 16px; font-size: 14px; line-height: 1.5; display: none; }
+    .feedback.show { display: block; }
+    .feedback.correct { background: #EAF3DE; color: #3B6D11; border: 1px solid #97C459; }
+    .feedback.incorrect { background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; }
+    .next-btn { background: #1D9E75; color: #fff; border: none; border-radius: 14px; padding: 14px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; width: 100%; display: none; transition: opacity 0.15s; }
+    .next-btn:hover { opacity: 0.85; }
+    .next-btn.show { display: block; }
+    .step-indicator { display: flex; gap: 6px; }
+    .step-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; transition: background 0.2s; }
+    .step-dot.done { background: #1D9E75; }
+    .step-dot.current { background: #5DCAA5; }
+
+    /* START */
+    .start-card { background: #fff; border: 1px solid #e8e8e0; border-radius: 16px; padding: 28px 20px; text-align: center; display: flex; flex-direction: column; gap: 14px; }
+    .start-title { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+    .start-sub { font-size: 14px; color: #555; line-height: 1.6; }
+    .start-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mode-card { background: #f4f4f0; border: 1px solid #e0e0d8; border-radius: 14px; padding: 14px 10px; text-align: center; }
+    .mode-card .mc-icon { font-size: 30px; margin-bottom: 6px; }
+    .mode-card .mc-title { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+    .mode-card .mc-desc { font-size: 11px; color: #888; margin-top: 3px; line-height: 1.4; }
+    .name-input { width: 100%; font-size: 16px; border-radius: 10px; border: 1px solid #e0e0d8; padding: 12px 14px; background: #fff; color: #1a1a1a; text-align: center; }
+    .name-input:focus { outline: none; border-color: #1D9E75; box-shadow: 0 0 0 3px #9FE1CB55; }
+    .play-btn { background: #1D9E75; color: #fff; border: none; border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; transition: opacity 0.15s; }
+    .play-btn:hover { opacity: 0.85; }
+    .play-btn:disabled { opacity: 0.35; cursor: default; }
+
+    /* END */
+    .share-hint { font-size: 13px; color: #666; text-align: center; line-height: 1.5; background: #fff; border: 1px solid #e8e8e0; border-radius: 14px; padding: 12px 16px; }
+    .result-card { background: #0F6E56; border-radius: 16px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; }
+    .rc-logo { font-size: 14px; font-weight: 500; letter-spacing: 0.04em; opacity: 0.8; }
+    .rc-logo span { opacity: 1; font-weight: 600; color: #9FE1CB; }
+    .rc-emoji { font-size: 52px; line-height: 1; }
+    .rc-title { font-size: 20px; font-weight: 600; color: #fff; }
+    .rc-name { font-size: 17px; color: #9FE1CB; font-weight: 600; }
+    .rc-divider { width: 40px; height: 1px; background: rgba(255,255,255,0.25); margin: 2px 0; }
+    .rc-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; }
+    .rc-stat { background: rgba(255,255,255,0.12); border-radius: 10px; padding: 10px 6px; text-align: center; }
+    .rc-stat .rs-val { font-size: 22px; font-weight: 600; color: #fff; }
+    .rc-stat .rs-lbl { font-size: 11px; color: #9FE1CB; margin-top: 2px; }
+    .rc-footer { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+    .wa-btn { background: #25D366; color: #fff; border: none; border-radius: 14px; padding: 14px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.15s; }
+    .wa-btn:hover { opacity: 0.85; }
+    .restart-btn { background: #fff; border: 1px solid #e0e0d8; border-radius: 14px; padding: 12px; font-size: 14px; color: #555; cursor: pointer; width: 100%; transition: background 0.15s; }
+    .restart-btn:hover { background: #f4f4f0; }
+  </style>
+</head>
+<body>
+<div id="root">
+
+  <!-- INICIO -->
+  <div class="screen active" id="screen-start">
+    <div class="header"><div class="logo">Mate<span>Play</span></div></div>
+    <div class="start-card">
+      <div style="font-size:52px">🧮</div>
+      <div class="start-title">MCM vs MCD</div>
+      <div class="start-sub">Leé cada situación, decidí si necesitás el <strong>mínimo común múltiplo</strong> o el <strong>máximo común divisor</strong>, y calculá la respuesta.</div>
+      <div class="start-modes">
+        <div class="mode-card"><div class="mc-icon">🔁</div><div class="mc-title">MCM</div><div class="mc-desc">Cuándo algo vuelve a coincidir</div></div>
+        <div class="mode-card"><div class="mc-icon">✂️</div><div class="mc-title">MCD</div><div class="mc-desc">Cuánto se puede repartir igual</div></div>
+      </div>
+      <input class="name-input" id="name-input" type="text" placeholder="Tu nombre y apellido" oninput="checkName()" autocomplete="off" />
+      <div style="font-size:12px; color:#888;">Tu nombre va a aparecer en el resultado final 📸</div>
+      <button class="play-btn" id="play-btn" onclick="startGame()" disabled>¡Jugar!</button>
+    </div>
+  </div>
+
+  <!-- JUEGO -->
+  <div class="screen" id="screen-game">
+    <div class="header">
+      <div class="logo">Mate<span>Play</span></div>
+      <div class="lives" id="lives-display">❤️❤️❤️</div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-bar" style="width:0%"></div></div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="step-indicator" id="step-dots"></div>
+      <div class="score-badge">Puntaje: <strong id="score-display">0</strong></div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-emoji" id="prob-emoji"></div>
+      <div class="problem-text" id="prob-text"></div>
+    </div>
+    <div class="section-label">Paso 1 — ¿Qué operación necesitás?</div>
+    <div class="choice-row">
+      <button class="choice-btn" id="btn-mcm" onclick="selectType('MCM')">
+        <div class="cb-icon">🔁</div><div class="cb-title">MCM</div><div class="cb-desc">Mínimo común múltiplo</div>
+      </button>
+      <button class="choice-btn" id="btn-mcd" onclick="selectType('MCD')">
+        <div class="cb-icon">✂️</div><div class="cb-title">MCD</div><div class="cb-desc">Máximo común divisor</div>
+      </button>
+    </div>
+    <div class="calc-section" id="calc-section" style="display:none">
+      <div class="section-label" id="calc-label">Paso 2 — Calculá</div>
+      <div class="answer-row">
+        <input class="answer-input" type="number" id="answer-input" placeholder="Tu respuesta" min="1" />
+        <button class="submit-btn" id="submit-btn" onclick="submitAnswer()">OK</button>
+      </div>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()">Siguiente →</button>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="screen" id="screen-end">
+    <div class="header"><div class="logo">Mate<span>Play</span></div></div>
+    <div class="share-hint">📸 Sacá una captura de pantalla y mandásela a tu profe por WhatsApp</div>
+    <div class="result-card" id="result-card">
+      <div class="rc-logo">Mate<span>Play</span> · MCM vs MCD</div>
+      <div class="rc-emoji" id="rc-emoji">🏆</div>
+      <div class="rc-title" id="rc-title">¡Excelente!</div>
+      <div class="rc-name" id="rc-name">Nombre Apellido</div>
+      <div class="rc-divider"></div>
+      <div class="rc-stats">
+        <div class="rc-stat"><div class="rs-val" id="rc-pts">0</div><div class="rs-lbl">puntos</div></div>
+        <div class="rc-stat"><div class="rs-val" id="rc-ok">0/8</div><div class="rs-lbl">correctas</div></div>
+        <div class="rc-stat"><div class="rs-val" id="rc-lives">0</div><div class="rs-lbl">vidas</div></div>
+      </div>
+      <div class="rc-footer" id="rc-date"></div>
+    </div>
+    <button class="wa-btn" onclick="sendWhatsapp()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+      Compartir por WhatsApp
+    </button>
+    <button class="restart-btn" onclick="startGame()">Jugar de nuevo</button>
+  </div>
+
+</div>
+<script>
+const PROBLEMS = [
+  { emoji:"🚌", text:"El colectivo 42 pasa cada 12 minutos y el 17 pasa cada 8 minutos. Ahora mismo pasaron los dos juntos. ¿En cuántos minutos volverán a coincidir?", a:12, b:8, type:"MCM", hint:"Cuando dos cosas se repiten y querés saber cuándo vuelven a pasar al mismo tiempo → MCM" },
+  { emoji:"🍫", text:"Tenés 24 chocolates y 36 caramelos. Querés armar bolsitas iguales repartiendo todo sin que sobre nada. ¿Cuántas bolsitas podés hacer como máximo?", a:24, b:36, type:"MCD", hint:"Cuando repartís en grupos iguales sin que sobre nada → MCD" },
+  { emoji:"💧", text:"Una canilla gotea cada 6 segundos y otra cada 9 segundos. Empezaron a la vez. ¿Cuántos segundos pasan hasta que vuelven a gotear juntas?", a:6, b:9, type:"MCM", hint:"Dos eventos que se repiten → cuándo coinciden de nuevo → MCM" },
+  { emoji:"🎮", text:"En un videojuego, cada 4 niveles aparece un cofre de monedas y cada 6 niveles aparece un cofre de gemas. Si en el nivel 1 aparecieron los dos, ¿en qué nivel volverán a aparecer juntos?", a:4, b:6, type:"MCM", hint:"Dos eventos que se repiten en ciclos distintos → cuándo coinciden → MCM" },
+  { emoji:"🎵", text:"Ana practica guitarra cada 4 días y Beto cada 6 días. Hoy practicaron juntos. ¿En cuántos días volverán a practicar el mismo día?", a:4, b:6, type:"MCM", hint:"¿Cuándo coinciden dos ciclos? → MCM" },
+  { emoji:"🎁", text:"Hay 18 lapiceras y 30 cuadernos para repartir en kits iguales. ¿Cuántos kits iguales se pueden armar usando todos los materiales?", a:18, b:30, type:"MCD", hint:"Repartir todo en grupos iguales → MCD" },
+  { emoji:"🚦", text:"Un semáforo cambia a verde cada 15 segundos y otro cada 10 segundos. Si ahora están en verde los dos, ¿en cuántos segundos volverán a estar verdes al mismo tiempo?", a:15, b:10, type:"MCM", hint:"Dos ciclos que se repiten → MCM" },
+  { emoji:"🪵", text:"Tenés tablones de 56 cm y de 42 cm. Querés cortarlos en trozos iguales del mayor tamaño posible sin desperdiciar madera. ¿Cuánto mide cada trozo?", a:56, b:42, type:"MCD", hint:"Mayor medida que divide exactamente a ambas → MCD" }
+];
+
+function gcd(a,b){ return b===0?a:gcd(b,a%b); }
+function lcm(a,b){ return (a*b)/gcd(a,b); }
+function computeAnswer(p){ return p.type==="MCM"?lcm(p.a,p.b):gcd(p.a,p.b); }
+
+let state={};
+
+function checkName(){
+  const v=document.getElementById('name-input').value.trim();
+  document.getElementById('play-btn').disabled=v.length<2;
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function startGame(){
+  const name=document.getElementById('name-input').value.trim();
+  if(!name) return;
+  const shuffled=[...PROBLEMS].sort(()=>Math.random()-0.5);
+  state={name,problems:shuffled,idx:0,lives:3,score:0,correct:0,selectedType:null,typeConfirmed:false,answered:false};
+  showScreen('screen-game');
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const p=state.problems[state.idx];
+  const total=state.problems.length;
+  document.getElementById('progress-bar').style.width=(state.idx/total*100)+'%';
+  document.getElementById('lives-display').textContent='❤️'.repeat(state.lives)+'🖤'.repeat(3-state.lives);
+  document.getElementById('score-display').textContent=state.score;
+  const dots=document.getElementById('step-dots');
+  dots.innerHTML=state.problems.map((_,i)=>`<div class="step-dot ${i<state.idx?'done':i===state.idx?'current':''}"></div>`).join('');
+  document.getElementById('prob-emoji').textContent=p.emoji;
+  document.getElementById('prob-text').textContent=p.text;
+  document.getElementById('btn-mcm').className='choice-btn';
+  document.getElementById('btn-mcd').className='choice-btn';
+  document.getElementById('btn-mcm').disabled=false;
+  document.getElementById('btn-mcd').disabled=false;
+  document.getElementById('calc-section').style.display='none';
+  document.getElementById('answer-input').value='';
+  document.getElementById('submit-btn').disabled=false;
+  const fb=document.getElementById('feedback');
+  fb.className='feedback'; fb.textContent='';
+  document.getElementById('next-btn').className='next-btn';
+  state.selectedType=null; state.typeConfirmed=false; state.answered=false;
+}
+
+function selectType(type){
+  if(state.typeConfirmed) return;
+  state.selectedType=type;
+  const p=state.problems[state.idx];
+  document.getElementById('btn-mcm').className='choice-btn'+(type==='MCM'?' selected':'');
+  document.getElementById('btn-mcd').className='choice-btn'+(type==='MCD'?' selected':'');
+  if(type!==p.type){
+    document.getElementById('btn-'+type.toLowerCase()).className='choice-btn wrong';
+    state.lives--;
+    document.getElementById('lives-display').textContent='❤️'.repeat(Math.max(0,state.lives))+'🖤'.repeat(3-Math.max(0,state.lives));
+    const fb=document.getElementById('feedback');
+    fb.className='feedback incorrect show';
+    fb.innerHTML='❌ Incorrecto. Este problema necesita <strong>'+p.type+'</strong>. '+p.hint;
+    document.getElementById('btn-mcm').disabled=true;
+    document.getElementById('btn-mcd').disabled=true;
+    state.typeConfirmed=true;
+    if(state.lives<=0){ setTimeout(endGame,1200); return; }
+    setTimeout(()=>{
+      document.getElementById('btn-'+p.type.toLowerCase()).className='choice-btn selected';
+      showCalcStep(p.type);
+    },1500);
+  } else {
+    state.typeConfirmed=true;
+    document.getElementById('btn-mcm').disabled=true;
+    document.getElementById('btn-mcd').disabled=true;
+    showCalcStep(type);
+  }
+}
+
+function showCalcStep(type){
+  document.getElementById('calc-section').style.display='flex';
+  document.getElementById('calc-label').textContent='Paso 2 — Calculá el '+type+'('+state.problems[state.idx].a+', '+state.problems[state.idx].b+')';
+  document.getElementById('answer-input').focus();
+}
+
+function submitAnswer(){
+  if(state.answered) return;
+  const val=parseInt(document.getElementById('answer-input').value);
+  if(isNaN(val)||val<=0) return;
+  const p=state.problems[state.idx];
+  const correct=computeAnswer(p);
+  const typeWasRight=state.selectedType===p.type;
+  const fb=document.getElementById('feedback');
+  state.answered=true;
+  document.getElementById('submit-btn').disabled=true;
+  if(val===correct){
+    const pts=typeWasRight?10:5;
+    state.score+=pts;
+    state.correct++;
+    fb.className='feedback correct show';
+    fb.innerHTML='✅ ¡Correcto! El '+p.type+'('+p.a+', '+p.b+') = <strong>'+correct+'</strong>. +'+pts+' pts 🎉';
+  } else {
+    state.lives--;
+    document.getElementById('lives-display').textContent='❤️'.repeat(Math.max(0,state.lives))+'🖤'.repeat(3-Math.max(0,state.lives));
+    fb.className='feedback incorrect show';
+    fb.innerHTML='❌ No es esa. El '+p.type+'('+p.a+', '+p.b+') = <strong>'+correct+'</strong>.';
+  }
+  document.getElementById('next-btn').className='next-btn show';
+  document.getElementById('score-display').textContent=state.score;
+  if(state.lives<=0){ document.getElementById('next-btn').textContent='Ver resultados →'; setTimeout(endGame,100); }
+}
+
+function nextQuestion(){
+  state.idx++;
+  if(state.idx>=state.problems.length) endGame();
+  else renderQuestion();
+}
+
+function endGame(){
+  const total=state.problems.length;
+  const pct=state.correct/total;
+  let emoji='😅', title='¡Seguí intentando!';
+  if(pct>=0.875){emoji='🏆';title='¡Excelente!';}
+  else if(pct>=0.625){emoji='⭐';title='¡Muy bien!';}
+  else if(pct>=0.375){emoji='💪';title='¡Buen esfuerzo!';}
+  document.getElementById('rc-emoji').textContent=emoji;
+  document.getElementById('rc-title').textContent=title;
+  document.getElementById('rc-name').textContent=state.name;
+  document.getElementById('rc-pts').textContent=state.score;
+  document.getElementById('rc-ok').textContent=state.correct+'/'+total;
+  document.getElementById('rc-lives').textContent=Math.max(0,state.lives);
+  const now=new Date();
+  document.getElementById('rc-date').textContent=now.toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+  showScreen('screen-end');
+}
+
+function sendWhatsapp(){
+  const t=encodeURIComponent(
+    '📊 *MatePlay — MCM vs MCD*\n👤 '+state.name+'\n🏆 '+state.score+' puntos\n✅ '+state.correct+'/8 correctas\n❤️ '+Math.max(0,state.lives)+' vidas restantes\n\n📸 (adjuntá la captura de pantalla)'
+  );
+  window.open('https://wa.me/?text='+t,'_blank');
+}
+</script>
+</body>
+</html>
